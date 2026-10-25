@@ -3,80 +3,119 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cellular Automata</title>
+    <title>Cellular Automata · 细胞自动机</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <div id="app" class="app-shell">
-      <div id="setupModal" class="modal visible" role="dialog" aria-modal="true">
-        <div class="modal-card">
-          <h2>启动设置</h2>
-          <div class="setup-actions">
-            <button id="openWorldBtn" class="primary-btn" type="button">世界生成</button>
-            <button id="openBlockBtn" class="secondary-btn" type="button">方块设定</button>
-          </div>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-title">CELLULAR AUTOMATA</span>
+        <span class="brand-sub">细胞自动机</span>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-label">GEN</span>
+          <span class="stat-value" id="statGen">00000</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">POP</span>
+          <span class="stat-value" id="statPop">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">WORLD</span>
+          <span class="stat-value" id="statWorld">—</span>
+        </div>
+        <div class="status-pill" id="statusPill">
+          <span class="status-dot"></span>
+          <span id="statusText">READY</span>
         </div>
       </div>
+    </header>
 
-      <div id="worldModal" class="modal hidden" role="dialog" aria-modal="true">
-        <div class="modal-card narrow">
-          <h3>世界生成</h3>
-
-          <div class="field-row">
-            <label for="rowsInput">世界高度</label>
-            <input id="rowsInput" type="number" min="8" max="40" value="18" />
-          </div>
-
-          <div class="field-row">
-            <label for="colsInput">世界宽度</label>
-            <input id="colsInput" type="number" min="8" max="60" value="26" />
-          </div>
-
-          <div class="field-row">
-            <label for="densityInput">初始密度</label>
-            <input id="densityInput" type="range" min="10" max="45" value="22" />
-            <span id="densityValue">22%</span>
-          </div>
-
-          <div class="modal-actions">
-            <button id="generateWorldBtn" class="primary-btn" type="button">生成</button>
-            <button id="cancelWorldBtn" class="secondary-btn" type="button">取消</button>
-          </div>
-        </div>
-      </div>
-
-      <div id="blockModal" class="modal hidden" role="dialog" aria-modal="true">
-        <div class="modal-card narrow">
-          <h3>方块设定</h3>
-          <div class="block-config-list" id="blockConfigList"></div>
-          <div class="modal-actions">
-            <button id="saveBlocksBtn" class="primary-btn" type="button">保存</button>
-            <button id="cancelBlockBtn" class="secondary-btn" type="button">取消</button>
-          </div>
-        </div>
-      </div>
-
-      <section id="simulationSection" class="simulation-section hidden">
+    <main class="stage">
+      <section id="simulation" class="simulation hidden">
         <div class="toolbar">
-          <div class="toolbar-left">
-            <label class="slider-wrap" for="speedSlider">
-              <span>速度</span>
-              <input id="speedSlider" type="range" min="10" max="100" value="55" />
-            </label>
-          </div>
-
-          <div class="toolbar-right">
-            <button id="pauseBtn" type="button" class="small-btn">暂停</button>
-            <button id="resetBtn" type="button" class="small-btn">重置</button>
-            <button id="newWorldBtn" type="button" class="small-btn">新建世界</button>
-            <button id="blockSettingsBtn" type="button" class="small-btn">方块设定</button>
+          <label class="speed" for="speedSlider">
+            <span class="speed-label">速度</span>
+            <input id="speedSlider" type="range" min="10" max="100" value="55" />
+            <span class="mono speed-value" id="speedValue">055</span>
+          </label>
+          <div class="actions">
+            <button id="pauseBtn" type="button" class="btn">暂停</button>
+            <button id="resetBtn" type="button" class="btn">重置</button>
+            <button id="newWorldBtn" type="button" class="btn">新建世界</button>
+            <button id="blockSettingsBtn" type="button" class="btn">方块设定</button>
           </div>
         </div>
 
-        <div class="grid-shell">
-          <div id="grid" class="cell-grid" aria-label="Cellular automata grid"></div>
+        <div class="canvas-shell" id="canvasShell">
+          <canvas id="world" aria-label="Cellular automata world"></canvas>
         </div>
       </section>
+    </main>
+
+    <div id="setupModal" class="modal" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <p class="modal-kicker">INITIAL SETUP</p>
+        <h3>启动设置</h3>
+        <p class="modal-hint">
+          每个方块沿自己的方向每步移动一格，目标位置被占用时原地停留。世界是环形的，越界会从另一侧绕回。
+        </p>
+        <div class="setup-actions">
+          <button id="openWorldBtn" type="button" class="btn btn-primary">世界生成</button>
+          <button id="openBlockBtn" type="button" class="btn">方块设定</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="worldModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <p class="modal-kicker">WORLD GENERATOR</p>
+        <h3>世界生成</h3>
+
+        <div class="field-row">
+          <label for="rowsInput">世界高度</label>
+          <input id="rowsInput" type="number" min="8" max="200" value="18" />
+        </div>
+
+        <div class="field-row">
+          <label for="colsInput">世界宽度</label>
+          <input id="colsInput" type="number" min="8" max="200" value="26" />
+        </div>
+
+        <div class="field-row">
+          <label for="densityInput">初始密度</label>
+          <input id="densityInput" type="range" min="5" max="45" value="22" />
+          <span class="mono" id="densityValue">22%</span>
+        </div>
+
+        <div class="modal-actions">
+          <button id="generateWorldBtn" type="button" class="btn btn-primary">生成</button>
+          <button id="cancelWorldBtn" type="button" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="blockModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card modal-wide">
+        <p class="modal-kicker">BLOCK RULES</p>
+        <h3>方块设定</h3>
+        <p class="modal-hint">
+          每个方块沿自己的方向每步移动一格；目标位置被其他方块占用时原地停留。世界是环形的，越界会从另一侧绕回。修改即时生效，无需保存。
+        </p>
+        <div class="block-list" id="blockList"></div>
+        <div class="modal-actions">
+          <button id="addBlockBtn" type="button" class="btn btn-primary">＋ 添加方块</button>
+          <button id="exportBlocksBtn" type="button" class="btn">⇩ 导出配置</button>
+          <button id="backBlockBtn" type="button" class="btn">返回</button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./src/main.js"></script>
