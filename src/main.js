@@ -34,6 +34,7 @@ let density = 22;
 let running = true;
 let timer = null;
 let stepDelay = 90;
+let worldModalFromSim = false;
 let blockColors = {
   red: '#ff6f61',
   blue: '#5c7cff'
@@ -163,6 +164,9 @@ function generateWorld() {
   showModal(simulationSection);
   hideModal(setupModal);
 
+  running = true;
+  pauseBtn.textContent = '暂停';
+
   if (timer) clearInterval(timer);
   timer = setInterval(step, stepDelay);
 }
@@ -238,6 +242,7 @@ function updateSpeed() {
 }
 
 function openWorldSetup() {
+  worldModalFromSim = false;
   hideModal(setupModal);
   showModal(worldModal);
 }
@@ -250,7 +255,11 @@ function openBlockSetup() {
 
 function closeWorldSetup() {
   hideModal(worldModal);
-  showModal(setupModal);
+  if (worldModalFromSim) {
+    showModal(simulationSection);
+  } else {
+    showModal(setupModal);
+  }
 }
 
 function closeBlockSetup() {
@@ -279,6 +288,7 @@ cancelWorldBtn.addEventListener('click', closeWorldSetup);
 cancelBlockBtn.addEventListener('click', closeBlockSetup);
 saveBlocksBtn.addEventListener('click', saveBlockConfig);
 newWorldBtn.addEventListener('click', () => {
+  worldModalFromSim = true;
   hideModal(simulationSection);
   showModal(worldModal);
 });
