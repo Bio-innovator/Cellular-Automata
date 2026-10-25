@@ -34,7 +34,7 @@ const els = {
   backBlockBtn: document.getElementById('backBlockBtn'),
 };
 
-const ADD_PALETTE = ['#f76b15', '#12a594', '#8e4ec6', '#5b5bd6', '#e93d82', '#087ea4'];
+const ADD_PALETTE = ['#f76b15', '#12a594', '#8e4ec6', '#5b5bd6', '#e93b82', '#087ea4'];
 
 let blocks = loadBlocks();
 let rows = 18;
@@ -401,5 +401,5 @@ window.addEventListener('resize', () => {
 
 applyDensityLabel();
 updateSpeed();
-setStatus(false);
+els.statusText.textContent = 'READY';
 requestAnimationFrame(frame);
