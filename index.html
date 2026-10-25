@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BML 交通模型</title>
+    <style>
+      :root {
+        --bg: #04060a;
+        --text: #e9edf6;
+        --muted: #b8c0d4;
+        --red: #ff4d4f;
+        --blue: #4a6df7;
+        --cell-size: 30px;
+        --grid-gap: 6px;
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+        padding: 20px 10px 40px;
+      }
+
+      .app {
+        width: min(1200px, 92vw);
+      }
+
+      .title {
+        text-align: center;
+        margin: 8px 0 14px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        font-size: clamp(2.1rem, 3vw, 4.2rem);
+        color: rgba(255,255,255,0.95);
+      }
+
+      .subtitle {
+        margin: 0 auto 10px;
+        text-align: center;
+        max-width: 920px;
+        font-size: clamp(1.3rem, 2vw, 2.8rem);
+        font-weight: 800;
+        line-height: 1.18;
+        letter-spacing: 0.02em;
+        color: rgba(255,255,255,0.95);
+      }
+
+      .subtitle .red { color: var(--red); }
+      .subtitle .blue { color: var(--blue); }
+
+      .simulation-panel {
+        margin: 18px auto 0;
+        width: min(1100px, 95%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .grid-wrap {
+        width: min(100%, 980px);
+        display: flex;
+        justify-content: center;
+        margin-top: 12px;
+      }
+
+      #grid {
+        display: grid;
+        grid-template-columns: repeat(var(--cols), var(--cell-size));
+        gap: var(--grid-gap);
+        padding: 6px 0 0;
+      }
+
+      .cell {
+        width: var(--cell-size);
+        height: var(--cell-size);
+        border-radius: 0;
+        background: transparent;
+        transition: transform 0.12s ease, filter 0.12s ease;
+      }
+
+      .cell.red {
+        background: linear-gradient(135deg, #ff8a80 0%, var(--red) 100%);
+      }
+
+      .cell.blue {
+        background: linear-gradient(135deg, #7c90ff 0%, var(--blue) 100%);
+      }
+
+      .cell.empty {
+        background: transparent;
+      }
+
+      .controls {
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 14px;
+        color: var(--muted);
+      }
+
+      .control-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      input[type="range"] {
+        width: 200px;
+        accent-color: var(--red);
+      }
+
+      .speed-label {
+        min-width: 95px;
+        text-align: right;
+        color: #e7ecf9;
+        font-weight: 700;
+        font-size: 1.15rem;
+      }
+
+      button {
+        border: 1px solid rgba(255,255,255,0.14);
+        background: rgba(255,255,255,0.03);
+        color: #f5f7ff;
+        border-radius: 999px;
+        padding: 8px 18px;
+        cursor: pointer;
+        font-weight: 700;
+        transition: background 0.15s ease, transform 0.15s ease;
+      }
+
+      button:hover {
+        background: rgba(255,255,255,0.08);
+        transform: translateY(-1px);
+      }
+
+      .status {
+        margin-top: 12px;
+        text-align: center;
+        font-size: clamp(1.3rem, 1.8vw, 2.3rem);
+        font-weight: 700;
+        color: rgba(255,255,255,0.92);
+        letter-spacing: 0.04em;
+      }
+
+      @media (max-width: 760px) {
+        :root {
+          --cell-size: 22px;
+          --grid-gap: 5px;
+        }
+
+        .app {
+          width: min(100%, 98vw);
+        }
+
+        .controls {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <h1 class="title">BML交通模型</h1>
+
+      <div class="subtitle">
+        <span class="red">红色汽车向右移动</span><br />
+        <span class="blue">蓝色汽车向下移动</span><br />
+        只能移动到空格中
+      </div>
+
+      <div class="simulation-panel">
+        <div class="grid-wrap">
+          <div id="grid" aria-label="Traffic simulation grid"></div>
+        </div>
+
+        <div class="controls">
+          <div class="control-box">
+            <label for="speedSlider" class="speed-label">速度</label>
+            <input id="speedSlider" type="range" min="10" max="100" value="52" />
+          </div>
+          <button id="toggleBtn" type="button">暂停</button>
+          <button id="resetBtn" type="button">重置</button>
+        </div>
+
+        <div class="status" id="status">cars moving: 68%</div>
+      </div>
+    </div>
+
+    <script>
+      const cols = 20;
+      const rows = 14;
+      const gridEl = document.getElementById('grid');
+      const speedSlider = document.getElementById('speedSlider');
+      const toggleBtn = document.getElementById('toggleBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const statusEl = document.getElementById('status');
+
+      const EMPTY = 0;
+      const RED = 1;
+      const BLUE = 2;
+
+      let grid = [];
+      let timer = null;
+      let running = true;
+      let stepInterval = 100;
+
+      function buildGrid() {
+        gridEl.style.setProperty('--cols', cols);
+        gridEl.innerHTML = '';
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell empty';
+            cell.dataset.row = row;
+            cell.dataset.col = col;
+            gridEl.appendChild(cell);
+          }
+        }
+      }
+
+      function createInitialGrid() {
+        const arr = Array.from({ length: rows }, () => Array(cols).fill(EMPTY));
+
+        const redRows = [0, 2, 4, 6, 8, 10];
+        redRows.forEach((row) => {
+          for (let col = 0; col < cols; col++) {
+            if ((col + row) % 3 === 0 || (col + row) % 5 === 0) {
+              arr[row][col] = RED;
+            }
+          }
+        });
+
+        for (let col = 0; col < cols; col++) {
+          const lane = (col * 2 + 1) % rows;
+          if (lane === 0 || lane === 2 || lane === 5 || lane === 7 || lane === 10) {
+            for (let row = 0; row < rows; row++) {
+              if ((row + col) % 4 === 0) {
+                arr[row][col] = BLUE;
+              }
+            }
+          }
+        }
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            const chance = Math.random();
+            if (chance < 0.06) arr[row][col] = RED;
+            if (chance > 0.93 && chance < 0.99) arr[row][col] = BLUE;
+          }
+        }
+
+        return arr;
+      }
+
+      function renderGrid() {
+        const cells = [...gridEl.children];
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            const idx = row * cols + col;
+            const cell = cells[idx];
+            const value = grid[row][col];
+            cell.className = 'cell';
+            if (value === RED) cell.classList.add('red');
+            else if (value === BLUE) cell.classList.add('blue');
+            else cell.classList.add('empty');
+          }
+        }
+      }
+
+      function updateStatus() {
+        let occupied = 0;
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            if (grid[row][col] !== EMPTY) occupied += 1;
+          }
+        }
+        const pct = Math.max(15, Math.min(92, Math.round((occupied / (rows * cols)) * 100)));
+        statusEl.textContent = `cars moving: ${pct}%`;
+      }
+
+      function step() {
+        const next = Array.from({ length: rows }, () => Array(cols).fill(EMPTY));
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            if (grid[row][col] !== RED) continue;
+            const targetCol = (col + 1) % cols;
+            if (grid[row][targetCol] === EMPTY && next[row][targetCol] === EMPTY) {
+              next[row][targetCol] = RED;
+            } else {
+              next[row][col] = RED;
+            }
+          }
+        }
+
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            if (grid[row][col] !== BLUE) continue;
+            const targetRow = (row + 1) % rows;
+            if (grid[targetRow][col] === EMPTY && next[targetRow][col] === EMPTY) {
+              next[targetRow][col] = BLUE;
+            } else {
+              next[row][col] = BLUE;
+            }
+          }
+        }
+
+        grid = next;
+        renderGrid();
+        updateStatus();
+      }
+
+      function startSimulation() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(step, stepInterval);
+      }
+
+      function updateSpeed() {
+        stepInterval = 180 - Number(speedSlider.value) * 1.2;
+        if (stepInterval < 18) stepInterval = 18;
+        if (running) startSimulation();
+      }
+
+      function resetSimulation() {
+        grid = createInitialGrid();
+        renderGrid();
+        updateStatus();
+      }
+
+      function toggleSimulation() {
+        running = !running;
+        toggleBtn.textContent = running ? '暂停' : '继续';
+        if (running) {
+          startSimulation();
+        } else if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      buildGrid();
+      resetSimulation();
+      speedSlider.addEventListener('input', updateSpeed);
+      toggleBtn.addEventListener('click', toggleSimulation);
+      resetBtn.addEventListener('click', () => {
+        resetSimulation();
+        if (running) startSimulation();
+      });
+      startSimulation();
+    </script>
+  </body>
+</html>
